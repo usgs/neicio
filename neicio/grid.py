@@ -108,8 +108,8 @@ class Grid:
             endx += 360
             ulx1 += 360
 
-        gxi = np.arange(startx,endx,xdim,dtype=float64)
-        gyi = np.arange(endy,starty,-ydim,dtype=float64)
+        gxi = np.arange(startx,endx,xdim,dtype=np.float64)
+        gyi = np.arange(endy,starty,-ydim,dtype=np.float64)
         
         #we may wind up with an array that is one shorter than we need...
         #in this case, append the last value.
