@@ -58,6 +58,7 @@ def getFixedFormatString(speclist,vlist):
                          - a sub-tuple containing the start/stop positions of the value in the line (1 offset). 
                          - A FORTRAN format string
                          - (optional) boolean value indicating whether there should be leading zeros.
+                         - (optional) boolean value indicatin whether value should be left justified.
     @parameter vlist:    A list of values, which must match the format strings given in speclist,
                          with the following exception: A NaN value where the spec says float or int
                          is OK.  Spaces will be inserted for the NaN value.
@@ -87,6 +88,9 @@ def getFixedFormatString(speclist,vlist):
         zerolead = False
         if len(spec) >= 3:
             zerolead = True
+        leftjust = False
+        if len(spec) >= 4:
+            leftjust = True
         
         specwidth = (smax-smin)+1
         spaces = ' '*(smin-offset)
@@ -114,9 +118,15 @@ def getFixedFormatString(speclist,vlist):
                 raise FixedFormatError,'String types do not support NaN values.'
         else:
             if zerolead:
-                fmt = '%0' + numstr + ftrans[strstr]
+                if leftjust:
+                    fmt = '%-0' + numstr + ftrans[strstr]
+                else:
+                    fmt = '%0' + numstr + ftrans[strstr]
             else:
-                fmt = '%' + numstr + ftrans[strstr]
+                if leftjust:
+                    fmt = '%-' + numstr + ftrans[strstr]
+                else:
+                    fmt = '%' + numstr + ftrans[strstr]
         formatlist.append(fmt)
         formatstr += fmt
         offset = smax+1
@@ -151,8 +161,8 @@ if __name__ == '__main__':
     print vlistout
     
     vlist = ['fred',float('nan'),5]
-    speclist = [((1,4),'a4'),
-                ((6,10),'f5.3'),
+    speclist = [((1,6),'a6',False,False),
+                ((7,11),'f5.3'),
                 ((12,14),'i3',True)]
     vstr = getFixedFormatString(speclist,vlist)
     print vstr

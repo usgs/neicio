@@ -1,5 +1,5 @@
 import numpy as np
-from pagerutil.interp import interp2
+from neicutil.interp import interp2
 import sys
 
 class GridError(Exception):
