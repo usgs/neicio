@@ -107,6 +107,8 @@ def getFixedFormatString(speclist,vlist):
         if width != specwidth:
             fmtstring = 'Cannot reconcile format string "%s" with range (%i,%i)'
             raise FixedFormatError,fmtstring % (fmt,smin,smax)
+        if (isinstance(v,str) or isinstance(v,unicode)) and len(v) > specwidth:
+            raise FixedFormatError,'Cannot reconcile string "%s" with width of %i' % (v,specwidth)
         widths.append(width)
         isfloat = isinstance(v,float)
         if isfloat and math.isnan(v):

@@ -136,6 +136,8 @@ class Tag(object):
             for key,value in self.attributes.iteritems():
                 if isinstance(value,datetime.datetime):
                     value = value.strftime(TIMEFMT)
+                #strip out " (double quotes) from attributes - they'll mess up XML parsing later
+                value = value.replace('"',"'")
                 attstr = attstr + '%s="%s" ' % (key,str(value))
             linestr = linestr + attstr.strip()
         if hasData or hasChildren:
