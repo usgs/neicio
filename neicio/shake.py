@@ -25,14 +25,10 @@ class ShakeGrid(Grid):
     
     AttributesDict = {}
     
-    def __init__(self,shakefilename,variable='MMI'):
-        """Load shakemap grid data from file.
-        @param shakefilename: Path to valid ShakeMap XML file OR file-like object.
-        @keyword variable: ShakeMap "z" variable to import into Grid.  At the time of this writing, the possible variables include:
-                           - PGA
-                           - PGV
-                           - MMI (Modified Mercalli Intensity)
-                           - SVEL
+    def __init__(self,shakefilename,variable=None):
+        """Load shakemap or secondary hazards grid data from file.
+        @param shakefilename: Path to valid ShakeMap/Secondary Hazards XML file OR file-like object.
+        @keyword variable: ShakeMap/Secondary "z" variable to import into Grid - defaults to first variable.
         @raise ShakeGridError: If input variable is not found in XML file.
         
         Populates the instance griddata, geodict, and AttributesDict objects.
@@ -46,6 +42,13 @@ class ShakeGrid(Grid):
             shakefile = open(shakefilename,'r')
         else:
             shakefile = shakefilename    
+
+        #detect when this is a secondary hazards grid instead of a shakemap grid
+        data = shakefile.read()
+        self.isSecondary = False
+        if data.find('secondary_grid') > -1:
+            self.isSecondary = True
+        shakefile.seek(0)
         self.__loadShakeHeader(shakefile)
         
         smdict = self.AttributesDict
@@ -53,13 +56,16 @@ class ShakeGrid(Grid):
         didx = 0
         dunits = None
 
-        for field in gridfields:
-            if field['name'] == variable:
-                didx = field['index'] - 1
-                dunits = field['units']
-                break
-        if not didx or not dunits:
-            raise ShakeGridError, "variable %s not found in %s" % (variable,shakefilename)
+        if variable is not None:
+            for field in gridfields:
+                if field['name'] == variable:
+                    didx = field['index'] - 1
+                    dunits = field['units']
+                    break
+            if not didx or not dunits:
+                raise ShakeGridError, "variable %s not found in %s" % (variable,shakefilename)
+        else:
+            variable = gridfields[0]
         
         #fill in relevant values in geodict dictionary
         self.__populateGeoDict(variable)
@@ -85,7 +91,7 @@ class ShakeGrid(Grid):
 
     def __loadShakeHeader(self,shakefile):
         """Load the "header" portion of the shakemap XML grid file.
-        @param shakefile: Valid ShakeMap XML file.
+        @param shakefile: Valid ShakeMap/Secondary XML file.
         
         Populates the instance AttributesDict variable.
         """
@@ -97,8 +103,11 @@ class ShakeGrid(Grid):
             tlineold = tline
             xmltext = xmltext+tline
             tline = shakefile.readline()
-            
-        xmltext = xmltext+'</shakemap_grid>'
+
+        if not self.isSecondary:
+            xmltext = xmltext+'</shakemap_grid>'
+        else:
+            xmltext = xmltext+'</secondary_grid>'
         smdict = self.__getShakeAttributes(xmltext)
         self.AttributesDict = smdict
         
@@ -181,6 +190,8 @@ class ShakeGrid(Grid):
     def getAttributes(self):
         """
         Dictionary representation of ShakeMap file XML "header".
+        NB - Below all attributes that start with "shakemap_" would be replaced with
+        "secondary_" if the input file is a secondary hazards grid.
         @return: Dictionary representation of ShakeMap file XML "header":
                  - shakemap_grid - Dictionary of following attributes:
                                  - event_id - The event ID, as allocated by NEIC.
@@ -232,8 +243,12 @@ class ShakeGrid(Grid):
         smdict = {}
         
         #get shakemap_grid attributes
-        smgridElement = dom3.getElementsByTagName('shakemap_grid')[0] #shakemap grid element
-        smdict['shakemap_grid'] = self.__getGridDict(smgridElement)
+        if not self.isSecondary:
+            smgridElement = dom3.getElementsByTagName('shakemap_grid')[0] #shakemap grid element
+            smdict['shakemap_grid'] = self.__getGridDict(smgridElement)
+        else:
+            smgridElement = dom3.getElementsByTagName('secondary_grid')[0] #shakemap grid element
+            smdict['secondary_grid'] = self.__getGridDict(smgridElement)
         
         #get event attributes
         eventElement = dom3.getElementsByTagName('event')[0]
@@ -262,13 +277,19 @@ class ShakeGrid(Grid):
     def __getGridDict(self,smgridElement):
         shakemap_grid = {}
         shakemap_grid['event_id'] = str(smgridElement.getAttribute('event_id'))
-        shakemap_grid['shakemap_id'] = str(smgridElement.getAttribute('shakemap_id'))
-        shakemap_grid['shakemap_version'] = str(smgridElement.getAttribute('shakemap_version'))
+        if not self.isSecondary:
+            shakemap_grid['shakemap_id'] = str(smgridElement.getAttribute('shakemap_id'))
+            shakemap_grid['shakemap_version'] = str(smgridElement.getAttribute('shakemap_version'))
+            shakemap_grid['shakemap_originator'] = str(smgridElement.getAttribute('shakemap_originator').lower())
+            shakemap_grid['shakemap_event_type'] = str(smgridElement.getAttribute('shakemap_event_type'))
+        else:
+            shakemap_grid['secondary_id'] = str(smgridElement.getAttribute('secondary_id'))
+            shakemap_grid['secondary_version'] = str(smgridElement.getAttribute('secondary_version'))
+            shakemap_grid['secondary_originator'] = str(smgridElement.getAttribute('secondary_originator').lower())
+            shakemap_grid['secondary_event_type'] = str(smgridElement.getAttribute('secondary_event_type'))
         shakemap_grid['code_version'] = str(smgridElement.getAttribute('code_version'))
         shakemap_grid['process_timestamp'] = self.__getDateTime(smgridElement.getAttribute('process_timestamp'))
-        shakemap_grid['shakemap_originator'] = str(smgridElement.getAttribute('shakemap_originator').lower())
         shakemap_grid['map_status'] = str(smgridElement.getAttribute('map_status'))
-        shakemap_grid['shakemap_event_type'] = str(smgridElement.getAttribute('shakemap_event_type'))
         return shakemap_grid
 
     def __getGridSpecDict(self,gridspecElement):
