@@ -175,7 +175,7 @@ class BinFile:
             rowcount = (rowend-rowstart)
             outrows = numpy.ceil(rowcount/rowstep)
             outcols = numpy.ceil(colcount/colstep)
-            data = numpy.zeros([outrows,outcols],dtype=dtype)
+            data = numpy.zeros([outrows,outcols],dtype=self.dtype)
             outrow = 0
             for row in range(int(rowstart),int(rowend),int(rowstep)):
                 #just go to the beginning of the row, we're going to read in the whole line
