@@ -198,7 +198,7 @@ class EsriGrid(Grid):
 
         #if the data read in has a different endian-ness, swap it...
         if hdrstruct['byteorder'] != self.__getLocalEndian():
-            self.griddata.byteswap()
+            self.griddata = self.griddata.byteswap()
         
         if hdrstruct['nodata'] is not None:
             inan,jnan = (self.griddata == hdrstruct['nodata']).nonzero()
