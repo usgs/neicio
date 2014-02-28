@@ -17,6 +17,7 @@ class EsriGridError(Exception):
 class EsriGrid(Grid):
     """
     Create Grid object from any kind of ESRI grid file - simple header, or header + world file.
+    NB - Regardless of what data type it started as, it will be upcasted to double precision floating point.
     """
     LARGEST_DEG_RANGE = 15
     GRIDLINE = 0
@@ -199,7 +200,10 @@ class EsriGrid(Grid):
         #if the data read in has a different endian-ness, swap it...
         if hdrstruct['byteorder'] != self.__getLocalEndian():
             self.griddata = self.griddata.byteswap()
-        
+
+        #now that we've byte-swapped, let's upcast this data to double
+        self.griddata = np.double(self.griddata)
+            
         if hdrstruct['nodata'] is not None:
             inan,jnan = (self.griddata == hdrstruct['nodata']).nonzero()
             self.griddata[inan,jnan] = numpy.NaN
