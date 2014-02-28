@@ -5,7 +5,7 @@ import re
 import sys
 import os.path
 from grid import Grid,GridError
-from numpy import array
+import numpy as np
 from binfile import BinFile
 from pylab import isnan
 
@@ -380,7 +380,7 @@ class EsriGrid(Grid):
         return worlddata
         
     def __getLocalEndian(self):
-        if ord(array([1],dtype=numpy.int16).tostring()[0]): #check this on a big-endian machine!
+        if ord(np.array([1],dtype=numpy.int16).tostring()[0]): #check this on a big-endian machine!
             endian = 'l' #little-endian
         else:
             endian = 'b' #big-endian
