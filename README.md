@@ -34,7 +34,7 @@ pip install basemap
 
 To install neicio:
 
-pip install git+git://github.com/mhearne-usgs/neicio.git
+pip install git+git://github.com/usgs/neicio.git
 
 Uninstalling and Updating
 -------------------------
@@ -45,7 +45,7 @@ pip uninstall neicio
 
 To update:
 
-pip install -U git+git://github.com/mhearne-usgs/neicio.git
+pip install -U git+git://github.com/usgs/neicio.git
 
 
 
