@@ -157,6 +157,8 @@ class ShakeGrid(Grid):
                 row = 0
             if row > nrows-1:
                 row = nrows-1
+            row = int(row)
+            col = int(col)
             self.griddata[row,col] = var
                 
             tline = shakefile.readline()
