@@ -232,6 +232,6 @@ class Grid:
             msg = 'One of more of your lat/lon values is outside Grid boundaries: %s' % (str(self.getRange()))
             raise GridError, msg
         if len(dims) == 3:
-            return self.griddata[row,col,0]
+            return self.griddata[row,col,:]
         else:
             return self.griddata[row,col]
