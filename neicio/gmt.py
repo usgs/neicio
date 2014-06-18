@@ -7,6 +7,7 @@ import sys
 #third party imports
 import numpy
 from scipy.io import netcdf
+import matplotlib.pyplot as plt
 
 #local imports
 from grid import Grid
@@ -31,9 +32,10 @@ class GMTGrid(Grid):
 
         #netcdf or native?
         ftype = self.getFileType(grdfile)
-        
+        self.ftype = ftype
+        self.gridfile = grdfile
         if ftype == 'netcdf':
-            self.load(grdfile,ftype,bounds=bounds)
+            self.load(bounds=bounds)
             return
         
         #we're dealing with a binary "native" GMT grid file
@@ -93,49 +95,85 @@ class GMTGrid(Grid):
             ftype = 'netcdf'
         return ftype
         
-    def load(self,grdfile,ftype,bounds=None):
-        if ftype == 'netcdf':
-            cdf = netcdf.netcdf_file(grdfile)
-            xvar = cdf.variables['x'].data
-            yvar = cdf.variables['y'].data
+    def load(self,bounds=None):
+        if self.ftype == 'netcdf':
+            cdf = netcdf.netcdf_file(self.gridfile)
+            if 'x' in cdf.variables.keys(): #at least two forms of COARDS-compliant netcdf files...
+                xvar = cdf.variables['x'].data
+                yvar = cdf.variables['y'].data
 
-            #do some QA on the x and y data
-            dx = numpy.diff(xvar)
-            dy = numpy.diff(yvar)
+                #do some QA on the x and y data
+                dx = numpy.diff(xvar)
+                dy = numpy.diff(yvar)
 
-            isXConsistent = numpy.abs(1 - numpy.max(dx)/numpy.min(dx)) < 0.01
-            isYConsistent = numpy.abs(1 - numpy.max(dx)/numpy.min(dx)) < 0.01
-            if not isXConsistent or not isYConsistent:
-                raise Exception,'X or Y cell dimensions are not consistent!'
+                isXConsistent = numpy.abs(1 - numpy.max(dx)/numpy.min(dx)) < 0.01
+                isYConsistent = numpy.abs(1 - numpy.max(dx)/numpy.min(dx)) < 0.01
+                if not isXConsistent or not isYConsistent:
+                    raise Exception,'X or Y cell dimensions are not consistent!'
 
-            #assign x/y resolution
-            self.geodict['xdim'] = numpy.mean(dx)
-            self.geodict['ydim'] = numpy.mean(dy)
+                #assign x/y resolution
+                self.geodict['xdim'] = numpy.mean(dx)
+                self.geodict['ydim'] = numpy.mean(dy)
 
-            if bounds is not None:
-                xmin,xmax,ymin,ymax = bounds
-                ixmin = numpy.abs(xvar-xmin).argmin()
-                ixmax = numpy.abs(xvar-xmax).argmin()
-                iymin = numpy.abs(yvar-ymin).argmin()
-                iymax = numpy.abs(yvar-ymax).argmin()
-                self.geodict['xmin'] = xvar[ixmin]
-                self.geodict['xmax'] = xvar[ixmax]
-                self.geodict['ymin'] = yvar[iymin]
-                self.geodict['ymax'] = yvar[iymax]
-                zvar = cdf.variables['z'].data
-                self.griddata = numpy.flipud(zvar[iymin:iymax,ixmin:ixmax])
-                m,n = self.griddata.shape
-                self.geodict['nrows'] = m
-                self.geodict['ncols'] = n
-            else:
-                self.geodict['nrows'] = cdf.dimensions['y']
-                self.geodict['ncols'] = cdf.dimensions['x']
-                self.geodict['xmin'] = cdf.variables['x'].data.min()
-                self.geodict['xmax'] = cdf.variables['x'].data.max()
-                self.geodict['ymin'] = cdf.variables['y'].data.min()
-                self.geodict['ymax'] = cdf.variables['y'].data.max()
-                zdata = cdf.variables['z'].data
-                self.griddata = numpy.flipud(numpy.copy(zdata))
+                if bounds is not None:
+                    xmin,xmax,ymin,ymax = bounds
+                    ixmin = numpy.abs(xvar-xmin).argmin()
+                    ixmax = numpy.abs(xvar-xmax).argmin()
+                    iymin = numpy.abs(yvar-ymin).argmin()
+                    iymax = numpy.abs(yvar-ymax).argmin()
+                    self.geodict['xmin'] = xvar[ixmin]
+                    self.geodict['xmax'] = xvar[ixmax]
+                    self.geodict['ymin'] = yvar[iymin]
+                    self.geodict['ymax'] = yvar[iymax]
+                    zvar = cdf.variables['z'].data
+                    self.griddata = numpy.flipud(zvar[iymin:iymax,ixmin:ixmax])
+                    m,n = self.griddata.shape
+                    self.geodict['nrows'] = m
+                    self.geodict['ncols'] = n
+                else:
+                    self.geodict['nrows'] = cdf.dimensions['y']
+                    self.geodict['ncols'] = cdf.dimensions['x']
+                    self.geodict['xmin'] = cdf.variables['x'].data.min()
+                    self.geodict['xmax'] = cdf.variables['x'].data.max()
+                    self.geodict['ymin'] = cdf.variables['y'].data.min()
+                    self.geodict['ymax'] = cdf.variables['y'].data.max()
+                    zdata = cdf.variables['z'].data
+                    self.griddata = numpy.flipud(numpy.copy(zdata))
+            else: #the other kind of COARDS netcdf
+                dxmin = cdf.variables['x_range'].data[0]
+                dxmax = cdf.variables['x_range'].data[1]
+                dymin = cdf.variables['y_range'].data[0]
+                dymax = cdf.variables['y_range'].data[1]
+                ncols,nrows = cdf.variables['dimension'].data
+                xdim,ydim = cdf.variables['spacing'].data
+                self.geodict['xdim'] = xdim
+                self.geodict['ydim'] = ydim
+                if bounds is None:
+                    self.geodict['xmin'] = dxmin
+                    self.geodict['xmax'] = dxmax
+                    self.geodict['ymin'] = dymin
+                    self.geodict['ymax'] = dymax
+                    self.geodict['nrows'] = nrows
+                    self.geodict['ncols'] = ncols
+                    self.griddata = numpy.reshape(numpy.flipud(cdf.variables['z'].data),(nrows,ncols))
+                else:
+                    xmin,xmax,ymin,ymax = bounds
+                    xvar = numpy.arange(xmin,xmax+xdim,xdim)
+                    yvar = numpy.arange(ymin,ymax+ydim,ydim)
+                    ixmin = numpy.abs(xvar-xmin).argmin()
+                    ixmax = numpy.abs(xvar-xmax).argmin()
+                    iymin = numpy.abs(yvar-ymin).argmin()
+                    iymax = numpy.abs(yvar-ymax).argmin()
+                    self.geodict['xmin'] = xvar[ixmin]
+                    self.geodict['xmax'] = xvar[ixmax]
+                    self.geodict['ymin'] = yvar[iymin]
+                    self.geodict['ymax'] = yvar[iymax]
+                    #we're reading in the whole array here just to subset it - not very efficient use of memory
+                    self.griddata = numpy.flipud(numpy.flipud(cdf.variables['z'].data),nrows,ncols)
+                    self.griddata = self.griddata[iymin:iymax,ixmin:ixmax]
+                    m,n = self.griddata.shape
+                    self.geodict['nrows'] = m
+                    self.geodict['ncols'] = n
 
             self.geodict['bandnames'] = ['Unknown']
             cdf.close()
@@ -237,6 +275,21 @@ class GMTGrid(Grid):
         return
         
 if __name__ == '__main__':
-    pass
+    filename = sys.argv[1]
+    subset = False
+    if len(sys.argv) == 5:
+        subset = True
+        xmin = float(sys.argv[2])
+        xmax = float(sys.argv[3])
+        ymin = float(sys.argv[4])
+        ymax = float(sys.argv[5])
+    gmtgrid = GMTGrid(filename)
+    if subset:
+        gmtgrid.load(filename,bounds=(xmin,xmax,ymin,ymax))
+    plt.imshow(gmtgrid.griddata)
+    plt.savefig('output.png')
+                     
+        
+    
     
         
