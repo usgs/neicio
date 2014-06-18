@@ -65,6 +65,9 @@ class HazProbGrid(Grid):
 if __name__ == '__main__':
     txtfile = sys.argv[1]
     grid = HazProbGrid(txtfile)
+    lat,lon = grid.getLatLon(10,10)
+    prob = grid.getValue(lat,lon)
+    print type(prob)
     fig = plt.figure(figsize=(10,6))
     plt.imshow(grid.griddata)
     plt.colorbar(shrink=0.55)
