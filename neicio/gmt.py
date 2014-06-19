@@ -155,7 +155,7 @@ class GMTGrid(Grid):
                     self.geodict['ymax'] = dymax
                     self.geodict['nrows'] = nrows
                     self.geodict['ncols'] = ncols
-                    self.griddata = numpy.reshape(numpy.flipud(cdf.variables['z'].data),(nrows,ncols))
+                    self.griddata = numpy.reshape(numpy.flipud(cdf.variables['z'].data.copy()),(nrows,ncols))
                 else:
                     xmin,xmax,ymin,ymax = bounds
                     xvar = numpy.arange(xmin,xmax+xdim,xdim)
@@ -169,7 +169,7 @@ class GMTGrid(Grid):
                     self.geodict['ymin'] = yvar[iymin]
                     self.geodict['ymax'] = yvar[iymax]
                     #we're reading in the whole array here just to subset it - not very efficient use of memory
-                    self.griddata = numpy.flipud(numpy.flipud(cdf.variables['z'].data),nrows,ncols)
+                    self.griddata = numpy.reshape(numpy.flipud(cdf.variables['z'].data.copy()),nrows,ncols)
                     self.griddata = self.griddata[iymin:iymax,ixmin:ixmax]
                     m,n = self.griddata.shape
                     self.geodict['nrows'] = m
@@ -275,6 +275,8 @@ class GMTGrid(Grid):
         return
         
 if __name__ == '__main__':
+    import matplotlib
+    matplotlib.use('AGG')   # generate postscript output by default
     filename = sys.argv[1]
     subset = False
     if len(sys.argv) == 5:
@@ -286,7 +288,8 @@ if __name__ == '__main__':
     gmtgrid = GMTGrid(filename)
     if subset:
         gmtgrid.load(filename,bounds=(xmin,xmax,ymin,ymax))
-    plt.imshow(gmtgrid.griddata)
+    plt.imshow(gmtgrid.griddata,vmin=0,vmax=800)
+    plt.colorbar()
     plt.savefig('output.png')
                      
         
