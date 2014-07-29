@@ -117,15 +117,37 @@ class GMTGrid(Grid):
 
                 if bounds is not None:
                     xmin,xmax,ymin,ymax = bounds
-                    ixmin = numpy.abs(xvar-xmin).argmin()
-                    ixmax = numpy.abs(xvar-xmax).argmin()
-                    iymin = numpy.abs(yvar-ymin).argmin()
-                    iymax = numpy.abs(yvar-ymax).argmin()
+                    cdfarray = BinCDFArray(cdf,len(yvar.data),len(xvar.data))
+                    if xmin > xmax:
+                        #cut user's request into two regions - one from the minimum to the
+                        #meridian, then another from the meridian to the maximum.
+                        (region1,region2) = self.__createSections((xmin,xmax,ymin,ymax))
+
+                        (iulx1,iuly1,ilrx1,ilry1) = region1
+                        (iulx2,iuly2,ilrx2,ilry2) = region2
+                        outcols1 = long(ilrx1-iulx1+1)
+                        outcols2 = long(ilrx2-iulx2+1)
+                        outcols = long(outcols1+outcols2)
+                        outrows = long(ilry1-iuly1+1)
+
+                        section1 = cdfarray[iuly1:ilry1+1,iulx1:ilrx1+1]
+                        section2 = cdfarray[iuly2:ilry2+1,iulx2:ilrx2+1]
+                        self.griddata = numpy.concatenate((section1,section2),axis=1)
+                        xmin = (ulx + iulx1*xdim)
+                        ymax = uly - iuly1*ydim
+                        xmax = ulx + ilrx2*xdim
+                        ymin = bymax - outrows*ydim
+                        
+                    else:
+                        ixmin = numpy.abs(xvar-xmin).argmin()
+                        ixmax = numpy.abs(xvar-xmax).argmin()
+                        iymin = numpy.abs(yvar-ymin).argmin()
+                        iymax = numpy.abs(yvar-ymax).argmin()
                     self.geodict['xmin'] = xvar[ixmin]
                     self.geodict['xmax'] = xvar[ixmax]
                     self.geodict['ymin'] = yvar[iymin]
                     self.geodict['ymax'] = yvar[iymax]
-                    zvar = cdf.variables['z'].data
+                    zvar = cdf.variables['z'].data.copy()
                     self.griddata = numpy.flipud(zvar[iymin:iymax,ixmin:ixmax])
                     m,n = self.griddata.shape
                     self.geodict['nrows'] = m
@@ -137,7 +159,7 @@ class GMTGrid(Grid):
                     self.geodict['xmax'] = cdf.variables['x'].data.max()
                     self.geodict['ymin'] = cdf.variables['y'].data.min()
                     self.geodict['ymax'] = cdf.variables['y'].data.max()
-                    zdata = cdf.variables['z'].data
+                    zdata = cdf.variables['z'].data.copy()
                     self.griddata = numpy.flipud(numpy.copy(zdata))
             else: #the other kind of COARDS netcdf
                 dxmin = cdf.variables['x_range'].data[0]
@@ -180,8 +202,30 @@ class GMTGrid(Grid):
         else:
             raise NotImplementedError,'Only COARDS-compliant netcdf files are supported at this time!'            
         return
-        
 
+    def __createSections(self,bounds):
+        (bxmin,bxmax,bymin,bymax) = bounds
+        ulx = self.geodict['xmin']
+        uly = self.geodict['ymax']
+        xdim = self.geodict['xdim']
+        ydim = self.geodict['ydim']
+        ncols = self.geodict['ncols']
+        nrows = self.geodict['nrows']
+        #section 1
+        iulx1 = int(numpy.floor((bxmin - ulx)/xdim))
+        iuly1 = int(numpy.ceil((uly - bymax)/ydim))
+        ilrx1 = int(ncols-1)
+        ilry1 = int(numpy.floor((uly - bymin)/ydim))
+        #section 2
+        iulx2 = 0
+        iuly2 = int(numpy.ceil((uly - bymax)/ydim))
+        ilrx2 = int(numpy.ceil((bxmax - ulx)/xdim))
+        ilry2 = int(numpy.floor((uly - bymin)/ydim))
+        
+        region1 = (iulx1,iuly1,ilrx1,ilry1)
+        region2 = (iulx2,iuly2,ilrx2,ilry2)
+        return(region1,region2)
+    
     def save(self,filename,fmt='netcdf'):
         nrows,ncols = self.griddata.shape
         xmin = self.geodict['xmin'] - self.geodict['xdim']/2.0
@@ -273,21 +317,86 @@ class GMTGrid(Grid):
         f.write(struct.pack(sfmt,*self.griddata.transpose().flatten()))
         f.close()
         return
-        
+
+class BinCDFArray(object):
+    def __init__(self,array,nrows,ncols):
+        self.array = array
+        self.nrows = nrows
+        self.ncols = ncols
+
+    def __getitem__(self,*args):
+        """Allows slicing of CDF data array in the same way as a numpy array."""
+        if len(args) == 1 and isinstance(args[0][0],int):
+            #user has passed in a tuple of row,col - they only want one value
+            row = args[0][0]
+            col = args[0][1]
+            nrows = self.nrows
+            ncols = self.ncols
+            if row < 0 or row > nrows-1:
+                raise Exception,"Row index out of bounds"
+            if col < 0 or col > ncols-1:
+                raise Exception,"Row index out of bounds"
+            idx = ncols * row + col
+            offset = 0
+            return self.array[idx]
+
+        if len(args) == 1 and isinstance(args[0][0],slice): #they want a non-scalar subset of the data
+            nrows = self.nrows
+            ncols = self.ncols
+            #calculate offset to first data element
+            key1 = args[0][0]
+            key2 = args[0][1]
+            rowstart = key1.start
+            rowend = key1.stop
+            rowstep = key1.step
+            colstart = key2.start
+            colend = key2.stop
+            colstep = key2.step
+            
+            if rowstep is None:
+                rowstep = 1
+            if colstep is None:
+                colstep = 1
+
+            #error checking
+            if rowstart < 0 or rowstart > nrows-1:
+                raise Exception,"Row index out of bounds"
+            if rowend < 0 or rowend > nrows:
+                raise Exception,"Row index out of bounds"
+            if colstart < 0 or colstart > ncols-1:
+                raise Exception,"Col index out of bounds"
+            if colend < 0 or colend > ncols:
+                raise Exception,"Col index out of bounds"
+
+            colcount = (colend-colstart)
+            rowcount = (rowend-rowstart)
+            outrows = numpy.ceil(rowcount/rowstep)
+            outcols = numpy.ceil(colcount/colstep)
+            data = numpy.zeros([outrows,outcols],dtype=self.dtype)
+            outrow = 0
+            for row in range(int(rowstart),int(rowend),int(rowstep)):
+                #just go to the beginning of the row, we're going to read in the whole line
+                idx = ncols*row 
+                offset = self.dwidth*idx #beginning of row
+                line = self.array[idx:idx+ncols]
+                data[outrow,:] = line[colstart:colend:colstep]
+                outrow = outrow+1
+        else:
+            raise Exception, "Unsupported __getitem__ input %s" % (str(key))
+        return(data)
+    
 if __name__ == '__main__':
-    import matplotlib
-    matplotlib.use('AGG')   # generate postscript output by default
     filename = sys.argv[1]
     subset = False
-    if len(sys.argv) == 5:
+    bounds = None
+    if len(sys.argv) > 2:
         subset = True
         xmin = float(sys.argv[2])
         xmax = float(sys.argv[3])
         ymin = float(sys.argv[4])
         ymax = float(sys.argv[5])
-    gmtgrid = GMTGrid(filename)
-    if subset:
-        gmtgrid.load(filename,bounds=(xmin,xmax,ymin,ymax))
+        bounds = (xmin,xmax,ymin,ymax)
+    gmtgrid = GMTGrid(filename,bounds=bounds)
     plt.imshow(gmtgrid.griddata,vmin=0,vmax=800)
     plt.colorbar()
     plt.savefig('output.png')
