@@ -159,7 +159,7 @@ class GMTGrid(Grid):
                     self.geodict['xmax'] = cdf.variables['x'].data.max()
                     self.geodict['ymin'] = cdf.variables['y'].data.min()
                     self.geodict['ymax'] = cdf.variables['y'].data.max()
-                    zdata = cdf.variables['z'].data
+                    zdata = cdf.variables['z'].data.copy()
                     self.griddata = numpy.flipud(numpy.copy(zdata))
             else: #the other kind of COARDS netcdf
                 dxmin = cdf.variables['x_range'].data[0]
