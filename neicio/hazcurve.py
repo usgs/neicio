@@ -22,47 +22,44 @@ class HazCurveGrid(Grid):
         line1 = f.readline().strip()
         line2 = f.readline().strip()
         self.period = float(f.readline().strip())
+        #read in the band names
         xvalues = []
-        for line in f.readlines():
-            parts = line.split()
-            if len(parts) == 1:
-                xvalues.append(parts[0])
-                continue
-            lats.append(float(parts[0]))
-            lons.append(float(parts[1]))
-            zdata = [float(zd) for zd in parts[2:]]
-            z.append(zdata)
+        for i in range(0,19):
+            line = f.readline()
+            xvalues.append(line.strip())
+
+        #read in the data using numpy's very fast loadtxt function!
+        self.griddata = np.loadtxt(f)
         f.close()
-        nz = len(zdata)
-        lats = np.array(lats)
-        lons = np.array(lons)
-        ulat = np.unique(lats)
-        ulon = np.unique(lons)
-        xdim = ulon[1] - ulon[0]
-        ydim = ulat[1] - ulat[0]
-        xmin = lons.min()
-        xmax = lons.max()
-        ymin = lats.min()
-        ymax = lats.max()
-        ncols = np.int32(np.floor(((xmax+xdim)-xmin)/xdim))
-        nrows = np.int32(np.floor(((ymax+ydim)-ymin)/ydim))
+        
+        lat = self.griddata[:,0]
+        lon = self.griddata[:,1]
+        self.griddata = self.griddata[:,2:]
+        xmin = lon.min()
+        xmax = lon.max()
+        ymin = lat.min()
+        ymax = lat.max()
+        ulat = np.unique(lat)
+        ulon = np.unique(lon)
+        ydim = np.diff(ulat)[0]
+        xdim = np.diff(ulon)[0]
+        m = len(ulat)
+        n = len(ulon)
+        p = len(xvalues)
+
+        #reshape the data so that it's oriented the way we need
+        #first reshape by columns then rows then bands
+        self.griddata = np.reshape(self.griddata,(m,n,p))
+
         self.geodict['xmin'] = xmin
         self.geodict['xmax'] = xmax
         self.geodict['ymin'] = ymin
         self.geodict['ymax'] = ymax
         self.geodict['xdim'] = xdim
         self.geodict['ydim'] = ydim
-        self.geodict['ncols'] = ncols
-        self.geodict['nrows'] = nrows
-        self.geodict['nbands'] = 1
+        self.geodict['ncols'] = n
+        self.geodict['nrows'] = m
         self.geodict['bandnames'] = xvalues
-        idx = 0
-        self.griddata = np.zeros((nrows,ncols,nz))
-        for lat,lon in zip(lats,lons):
-            row,col = self.getRowCol(lat,lon)
-            self.griddata[row,col,:] = np.array(z[idx])
-            idx += 1
-                
 
 if __name__ == '__main__':
     txtfile = sys.argv[1]
