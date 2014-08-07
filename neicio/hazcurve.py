@@ -13,21 +13,31 @@ from grid import Grid
 
 class HazCurveGrid(Grid):
     def __init__(self,probtextfile):
-        fpath,ffile = os.path.split(probtextfile)
-        ffile,fext = os.path.splitext(ffile)
+        #about the only thing we can depend on is that the first three
+        #rows have stuff (maybe commented, maybe not).  This is followed by N lines
+        #of single values, where N becomes the number of bands of data
         lats = []
         lons = []
         z = []
         f = open(probtextfile,'rt')
-        line1 = f.readline().strip()
-        line2 = f.readline().strip()
-        self.period = float(f.readline().strip())
+        #skip over first three lines
+        for i in range(0,3):
+            f.readline()
+        
         #read in the band names
         xvalues = []
-        for i in range(0,19):
-            line = f.readline()
+        line = f.readline()
+        parts = line.strip().split()
+        while len(parts) == 1:
             xvalues.append(line.strip())
+            line = f.readline()
+            parts = line.strip().split()
 
+        #go back to the beginning, then read ahead len(xvalues)+3 to get to the data
+        f.seek(0)
+        for i in range(0,len(xvalues)+3):
+            f.readline()
+            
         #read in the data using numpy's very fast loadtxt function!
         self.griddata = np.loadtxt(f)
         f.close()
@@ -76,10 +86,11 @@ if __name__ == '__main__':
     plt.hold(True)
     plt.plot(cx,cy,color='pink',marker='x')
     plt.colorbar(shrink=0.55)
-    plt.title('%.1f second Hazard Curve' % grid.period)
+    p,f = os.path.split(txtfile)
+    plt.title('Hazard Curve from file %s' % f)
     plt.sca(axeslist[1])
     plt.semilogy(np.array(grid.geodict['bandnames']),zdata,'b')
     plt.xlabel('Frequency')
     plt.ylabel('Probability')
-    plt.title('Hazard Curve at %.3f,%.3f (Period %.1f sec)' % (lat,lon,grid.period))
-    plt.savefig('hazard_curve_%.1f.png' % grid.period)
+    plt.title('Hazard Curve at %.3f,%.3f' % (lat,lon))
+    plt.savefig('%s.png' % f)
