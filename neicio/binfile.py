@@ -183,7 +183,7 @@ class BinFile:
                 offset = self.dwidth*idx #beginning of row
                 self.fobj.seek(offset,0)
                 line = numpy.fromfile(self.fobj,dtype=self.dtype,count=ncols)
-                data[outrow,:] = line[colstart:colend:colstep]
+                data[outrow,:] = line[int(colstart):int(colend):int(colstep)]
                 outrow = outrow+1
         else:
             raise BinFileError, "Unsupported __getitem__ input %s" % (str(key))
