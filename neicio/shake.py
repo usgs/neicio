@@ -321,6 +321,7 @@ class ShakeGrid(Grid):
         event['lon'] = float(eventElement.getAttribute('lon'))
         event['event_timestamp'] = self.__getDateTime(eventElement.getAttribute('event_timestamp'))
         event['event_description'] = str(eventElement.getAttribute('event_description'))
+        event['event_network'] = str(eventElement.getAttribute('event_network'))
         return event
 
     #we need to process two different kinds of timestamps...
