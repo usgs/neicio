@@ -1,6 +1,11 @@
-import numpy as np
-from neicutil.interp import interp2
+#!/usr/bin/env python
+
+#stdlib
 import sys
+
+#third party
+import numpy as np
+from scipy import interpolate
 
 class GridError(Exception):
     "used to indicate an error in Grid"
@@ -55,19 +60,83 @@ class Grid:
         self.geodict = grid.geodict.copy()
         self.griddata = grid.griddata.copy()
 
-    def interpolateToGrid(self,geodict,method='linear'): #implement here
+    def binToGrid(self,geodict):
         """
-        Given a geodict specifying another grid extent and resolution, resample current grid to match.
+        Given a geodict specifying another (coarser) grid extent and resolution, DOWNSAMPLE current grid to match.
         
         @param geodict: geodict dictionary from another grid whose extents are inside the extent of this grid.
-        @keyword method: Optional interpolation method - ['linear', 'nearest'].
         @raise GridError: If the Grid object upon which this function is being called is not completely 
                           contained by the grid to which this Grid is being resampled.
         @raise GridError: If the resulting interpolated grid shape does not match input geodict.
 
         This function modifies the internal griddata and geodict object variables.
         """
-        #extract the geographic information about the image we're resampling
+        xi,yi = self._getInterpCoords(geodict)
+        nrows = len(yi)
+        ncols = len(xi)
+        #what are the width and height of the destination cells in source cell coordinates
+        #for example, if source cell width is 1.5 meters, and destination cell width is 
+        #4.5 meters, then 1 destination cell = 3 source cells
+        coarsex = geodict['xdim']/self.geodict['xdim']
+        coarsey = geodict['ydim']/self.geodict['ydim']
+        newgriddata = np.zeros((nrows,ncols))
+        for i in range(0,nrows):
+            top = int(np.ceil(yi[i]-coarsey/2.0))
+            bottom = int(np.floor(yi[i]+coarsey/2.0))
+            #assign y weights to each row we are sampling
+            ny = (bottom-top)+1
+            yw = np.ones(ny)
+            #figure out the weight of the topmost base cell
+            coarsetop = yi[i] - coarsey/2.0
+            basetop = top - 0.5
+            coarsebottom = yi[i] + coarsey/2.0
+            basebottom = top + 0.5
+            if coarsebottom > basebottom:
+                yw[0] = (basebottom-coarsetop)/(basebottom-basetop)
+            else:
+                yw[0] = (coarsebottom-coarsetop)/(basebottom-basetop)
+            #figure out the weight of the bottommost base cell
+            basetop = bottom - 0.5
+            basebottom = bottom + 0.5
+            if basetop > coarsetop:
+                yw[-1] = (coarsebottom-basetop)/(basebottom-basetop)
+            else:
+                yw[-1] = (coarsebottom-coarsetop)/(basebottom-basetop)
+            
+            for j in range(0,ncols):
+                left = int(np.ceil(xi[j]-coarsex/2.0))
+                right = int(np.floor(xi[j]+coarsex/2.0))
+                nx = (right-left)+1
+                zcell = self.griddata[top:bottom+1,left:right+1] #data we'll be sampling from
+                #assign weights to each base grid cell from which we are sampling
+                xw = np.ones(nx) #array of x weights
+                #figure out the weight of the leftmost base cell
+                coarseleft = xi[j] - coarsex/2.0
+                baseleft = left - 0.5
+                coarseright = xi[j] + coarsex/2.0
+                baseright = left + 0.5
+                if coarseright > baseright:
+                    xw[0] = (baseright-coarseleft)/(baseright-baseleft)
+                else:
+                    xw[0] = (coarseright-coarseleft)/(baseright-baseleft)
+                #figure out the weight of the rightmost base cell
+                baseleft = right - 0.5
+                baseright = right + 0.5
+                if baseleft > coarseleft:
+                    xw[-1] = (coarseright-baseleft)/(baseright-baseleft)
+                else:
+                    xw[-1] = (coarseright-coarseleft)/(baseright-baseleft)
+                xweights = np.tile(xw,(ny,1))
+                yweights = np.tile(yw.reshape(ny,1),(1,nx))
+                weights = xweights*yweights
+                newgriddata[i,j] = np.nanmean(zcell*weights)
+            
+        self.griddata = newgriddata.copy()
+        self.geodict = geodict.copy()
+                
+
+    def _getInterpCoords(self,geodict):
+        #get the cell coordinates of the grid we want to interpolate to
         dims = self.griddata.shape
         nrows1 = dims[0]
         ncols1 = dims[1]
@@ -124,9 +193,42 @@ class Grid:
 
         xi = (gxi - ulx1)/xdim1
         yi = (uly1 - gyi)/ydim1
+
+        return (xi,yi)
         
-        self.griddata = interp2(self.griddata,xi,yi,method=method)
-                
+    def interpolateToGrid(self,geodict,method='linear'): #implement here
+        """
+        Given a geodict specifying another grid extent and resolution, resample current grid to match.
+        
+        @param geodict: geodict dictionary from another grid whose extents are inside the extent of this grid.
+        @keyword method: Optional interpolation method - ['linear', 'cubic','quintic','nearest']
+        @raise GridError: If the Grid object upon which this function is being called is not completely 
+                          contained by the grid to which this Grid is being resampled.
+        @raise GridError: If the resulting interpolated grid shape does not match input geodict.
+
+        This function modifies the internal griddata and geodict object variables.
+        """
+        xi,yi = self._getInterpCoords(geodict)
+
+        #now using scipy interpolate functions
+        baserows,basecols = self.geodict['nrows'],self.geodict['ncols']
+        basex = np.arange(0,basecols) #base grid PIXEL coordinates
+        basey = np.arange(0,baserows)
+        if method in ['linear','cubic','quintic']:
+            f = interpolate.interp2d(basex,basey,self.griddata)
+            self.griddata = f(xi,yi)
+        else:
+            x,y = np.meshgrid(basex,basey)
+            f = interpolate.NearestNDInterpolator(zip(x.flatten(),y.flatten()),self.griddata.flatten())
+            newrows = geodict['nrows']
+            newcols = geodict['ncols']
+            xi = np.tile(xi,(newrows,1))
+            yi = np.tile(yi.reshape(newrows,1),(1,newcols))
+            self.griddata = f(zip(xi.flatten(),yi.flatten()))
+            self.griddata = self.griddata.reshape(xi.shape)
+                                                  
+            
+        nrows,ncols = geodict['nrows'],geodict['ncols']
         dims = self.griddata.shape
         nrows_new = dims[0]
         ncols_new = dims[1]
@@ -235,3 +337,76 @@ class Grid:
             return self.griddata[row,col,:]
         else:
             return self.griddata[row,col]
+
+def testBin():
+    grid = Grid()
+    grid.griddata = np.arange(1,31).reshape(5,6)
+    grid.geodict = {'xmin':0.5,
+                    'xmax':5.5,
+                    'ymin':0.5,
+                    'ymax':4.5,
+                    'xdim':1.0,
+                    'ydim':1.0,
+                    'nrows':5,
+                    'ncols':6}
+    otherdict = {'xmin':1.75,
+                 'xmax':4.75,
+                 'ymin':0.75,
+                 'ymax':3.75,
+                 'xdim':1.5,
+                 'ydim':1.5,
+                 'nrows':3,
+                 'ncols':3}
+    grid.binToGrid(otherdict)
+    answer = np.array([[  3.5625,   4.3125,   5.25  ],
+                       [  9.1875,   9.9375,  10.875 ],
+                       [ 13.6875,  14.4375,  15.375 ]])
+    assert(np.equal(grid.griddata,answer).all())
+
+def testInterp():
+    grid = Grid()
+    initialdata = np.arange(1,17).reshape(4,4)
+    initialdict = {'xmin':0.5,
+                   'xmax':3.5,
+                   'ymin':0.5,
+                   'ymax':3.5,
+                   'xdim':1.0,
+                   'ydim':1.0,
+                   'nrows':4,
+                   'ncols':4}
+    grid.griddata = initialdata.copy()
+    grid.geodict = initialdict.copy()
+    otherdict = {'xmin':1.0,
+                 'xmax':3.0,
+                 'ymin':1.0,
+                 'ymax':3.0,
+                 'xdim':1.0,
+                 'ydim':1.0,
+                 'nrows':3,
+                 'ncols':3}
+    answers = {}
+    answers['linear'] = np.array([[  3.5,   4.5,   5.5],
+                                  [  7.5,   8.5,   9.5],
+                                  [ 11.5,  12.5,  13.5]])
+    answers['cubic'] = np.array([[  3.5,   4.5,   5.5],
+                                 [  7.5,   8.5,   9.5],
+                                 [ 11.5,  12.5,  13.5]])
+    answers['quintic'] = np.array([[  3.5,   4.5,   5.5],
+                                   [  7.5,   8.5,   9.5],
+                                   [ 11.5,  12.5,  13.5]])
+    answers['nearest'] = np.array([[ 1,  7,  8],
+                                   [ 5,  7,  8],
+                                   [14, 11, 11]])
+    for method in ['linear','cubic','quintic','nearest']:
+        grid.interpolateToGrid(otherdict,method=method)
+        assert(np.equal(grid.griddata,answers[method]).all())
+        grid.griddata = initialdata.copy()
+        grid.geodict = initialdict.copy()
+        
+if __name__ == '__main__':
+    testBin()
+    testInterp()
+
+    
+
+    
