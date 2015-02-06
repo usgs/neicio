@@ -98,9 +98,16 @@ class GMTGrid(Grid):
     def load(self,bounds=None):
         if self.ftype == 'netcdf':
             cdf = netcdf.netcdf_file(self.gridfile)
-            if 'x' in cdf.variables.keys(): #at least two forms of COARDS-compliant netcdf files...
-                xvar = cdf.variables['x'].data
-                yvar = cdf.variables['y'].data
+            xvarname = None
+            if 'x' in cdf.variables.keys():
+                xvarname = 'x'
+                yvarname = 'y'
+            else:
+                xvarname = 'lon'
+                yvarname = 'lat'
+            if xvarname is not None: #at least two forms of COARDS-compliant netcdf files...
+                xvar = cdf.variables[xvarname].data
+                yvar = cdf.variables[yvarname].data
 
                 #do some QA on the x and y data
                 dx = numpy.diff(xvar)
@@ -225,7 +232,28 @@ class GMTGrid(Grid):
         region1 = (iulx1,iuly1,ilrx1,ilry1)
         region2 = (iulx2,iuly2,ilrx2,ilry2)
         return(region1,region2)
-    
+
+    def setDimArray(self,nelements,dmin,dmax,ddim):
+        data = numpy.arange(dmin,dmax+ddim,ddim)
+        tmax = dmax+ddim
+        nrounds = 0 # we can get stuck in an endless loop here...
+        while len(data) != nelements and nrounds < 4:
+            if len(data) > nelements:
+                tmax -= ddim
+            if len(data) < nelements:
+                tmax += ddim
+            data = numpy.arange(dmin,tmax,ddim)
+            nrounds += 1
+        if len(data) == nelements:
+            return (data,ddim)
+        ddim = (dmax-dmin)/nelements
+        data = numpy.arange(dmin,dmax,ddim)
+        if len(data) > nelements:
+            data = data[0:-1]
+        if len(data) < nelements:
+            data = numpy.append(data,data[-1]+ddim)
+        return (data,ddim)
+            
     def save(self,filename,fmt='netcdf'):
         nrows,ncols = self.griddata.shape
         xmin = self.geodict['xmin'] - self.geodict['xdim']/2.0
@@ -242,22 +270,8 @@ class GMTGrid(Grid):
             z = cdf.createVariable('z',self.griddata.dtype,['y','x'])
             xdim = self.geodict['xdim']
             ydim = self.geodict['ydim']
-            xdata = numpy.arange(xmin,xmax+xdim,xdim)
-            ydata = numpy.arange(ymin,ymax+ydim,ydim)
-            txmax = xmax+xdim
-            tymax = ymax+ydim
-            while len(xdata) != ncols:
-                if len(xdata) > ncols:
-                    txmax -= xdim
-                if len(xdata) < ncols:
-                    txmax += xdim
-                xdata = numpy.arange(xmin,txmax,xdim)
-            while len(ydata) != nrows:
-                if len(ydata) > nrows:
-                    tymax -= ydim
-                if len(ydata) < nrows:
-                    tymax += ydim
-                ydata = numpy.arange(ymin,tymax,ydim)
+            xdata,xdim = self.setDimArray(ncols,xmin,xmax,xdim)
+            ydata,ydim = self.setDimArray(nrows,ymin,xmax,xdim)
             
             x[:] = xdata
             y[:] = ydata
