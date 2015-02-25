@@ -7,5 +7,4 @@ setup(name='neicio',
       author_email='mhearne@usgs.gov',
       url='',
       packages=['neicio'],
-      install_requires=['numpy', 'matplotlib', 'scipy'],
 )
