@@ -160,12 +160,12 @@ class GMTGrid(Grid):
                     self.geodict['nrows'] = m
                     self.geodict['ncols'] = n
                 else:
-                    self.geodict['nrows'] = cdf.dimensions['y']
-                    self.geodict['ncols'] = cdf.dimensions['x']
-                    self.geodict['xmin'] = cdf.variables['x'].data.min()
-                    self.geodict['xmax'] = cdf.variables['x'].data.max()
-                    self.geodict['ymin'] = cdf.variables['y'].data.min()
-                    self.geodict['ymax'] = cdf.variables['y'].data.max()
+                    self.geodict['nrows'] = cdf.dimensions[yvarname]
+                    self.geodict['ncols'] = cdf.dimensions[xvarname]
+                    self.geodict['xmin'] = cdf.variables[xvarname].data.min()
+                    self.geodict['xmax'] = cdf.variables[xvarname].data.max()
+                    self.geodict['ymin'] = cdf.variables[yvarname].data.min()
+                    self.geodict['ymax'] = cdf.variables[yvarname].data.max()
                     zdata = cdf.variables['z'].data.copy()
                     self.griddata = numpy.flipud(numpy.copy(zdata))
             else: #the other kind of COARDS netcdf
