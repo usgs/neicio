@@ -42,7 +42,7 @@ def readStation(stationfile):
         psa30 = float(station.getElementsByTagName('comp')[0].getElementsByTagName('psa30')[0].getAttribute('value'))
         compdict['lat'].append(lat)
         compdict['lon'].append(lon)
-        compdict['pga'].append(lon)
+        compdict['pga'].append(pga)
         compdict['pgv'].append(pgv)
         compdict['psa03'].append(psa03)
         compdict['psa10'].append(psa10)
