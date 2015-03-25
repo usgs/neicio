@@ -271,7 +271,7 @@ class GMTGrid(Grid):
             xdim = self.geodict['xdim']
             ydim = self.geodict['ydim']
             xdata,xdim = self.setDimArray(ncols,xmin,xmax,xdim)
-            ydata,ydim = self.setDimArray(nrows,ymin,xmax,xdim)
+            ydata,ydim = self.setDimArray(nrows,ymin,ymax,ydim)
             
             x[:] = xdata
             y[:] = ydata
