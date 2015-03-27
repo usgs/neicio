@@ -275,7 +275,7 @@ class GMTGrid(Grid):
             
             x[:] = xdata
             y[:] = ydata
-            z[:] = self.griddata
+            z[:] = numpy.flipud(self.griddata)
             cdf.flush()
             cdf.close()
             return
