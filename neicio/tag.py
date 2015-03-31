@@ -25,9 +25,10 @@ class Tag(object):
 
     def loadFromString(self,xmlstr):
         dom = minidom.parseString(xmlstr)
-        if len(dom.childNodes) > 1:
-            raise Exception,'XML string has more than one root node!'
-        root = dom.firstChild
+        #try to detect which child node of the dom is an actual XML element
+        for root in dom.childNodes:
+            if not isinstance(root,minidom.DocumentType):
+                break
         self.name = root.nodeName
         atts = root.attributes
         hasData = root.firstChild.nodeType == root.TEXT_NODE and len(root.firstChild.nodeValue.strip())
