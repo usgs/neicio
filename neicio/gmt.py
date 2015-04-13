@@ -263,11 +263,21 @@ class GMTGrid(Grid):
         
         if fmt != 'binary':
             cdf = netcdf.netcdf_file(filename,'w')
+            cdf.node_offset = 1
+            cdf.Conventions = 'COARDS, CF-1.5'
             cdf.createDimension('x',self.geodict['ncols'])
             cdf.createDimension('y',self.geodict['nrows'])
             x = cdf.createVariable('x',numpy.dtype('double'),['x'])
             y = cdf.createVariable('y',numpy.dtype('double'),['y'])
             z = cdf.createVariable('z',self.griddata.dtype,['y','x'])
+            x.actual_range = numpy.array([xmin,xmax])
+            y.actual_range = numpy.array([ymin,ymax])
+            zmin = numpy.nanmin(self.griddata)
+            zmax = numpy.nanmax(self.griddata)
+            z.actual_range = numpy.array([zmin,zmax])
+            x.long_name = 'x'
+            y.long_name = 'y'
+            z.long_name = 'z'
             xdim = self.geodict['xdim']
             ydim = self.geodict['ydim']
             xdata,xdim = self.setDimArray(ncols,xmin,xmax,xdim)
@@ -398,6 +408,10 @@ class BinCDFArray(object):
         else:
             raise Exception, "Unsupported __getitem__ input %s" % (str(key))
         return(data)
+
+def test():
+    pass
+    
     
 if __name__ == '__main__':
     filename = sys.argv[1]
