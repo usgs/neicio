@@ -215,8 +215,27 @@ class Grid:
         basex = np.arange(0,basecols) #base grid PIXEL coordinates
         basey = np.arange(0,baserows)
         if method in ['linear','cubic','quintic']:
-            f = interpolate.interp2d(basex,basey,self.griddata)
-            self.griddata = f(xi,yi)
+            if not np.isnan(self.griddata).any():
+                #at the time of this writing, interp2d does not support NaN values at all.
+                #switching to griddata, which is slower by ~2 orders of magnitude but supports NaN.
+                f = interpolate.interp2d(basex,basey,self.griddata,kind=method)
+                self.griddata = f(xi,yi)
+            else:
+                xi,yi = np.meshgrid(xi,yi)
+                newrows,newcols = xi.shape
+                xi = xi.flatten()
+                yi = yi.flatten()
+                xnew = np.zeros((len(xi),2))
+                xnew[:,0] = xi
+                xnew[:,1] = yi
+                basex,basey = np.meshgrid(basex,basey)
+                basex = basex.flatten()
+                basey = basey.flatten()
+                xold = np.zeros((len(basex),2))
+                xold[:,0] = basex
+                xold[:,1] = basey
+                self.griddata = interpolate.griddata(xold,self.griddata.flatten(),xnew,method=method)
+                self.griddata = self.griddata.reshape((newrows,newcols))
         else:
             x,y = np.meshgrid(basex,basey)
             f = interpolate.NearestNDInterpolator(zip(x.flatten(),y.flatten()),self.griddata.flatten())
