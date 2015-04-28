@@ -154,8 +154,9 @@ class GMTGrid(Grid):
                     self.geodict['xmax'] = xvar[ixmax]
                     self.geodict['ymin'] = yvar[iymin]
                     self.geodict['ymax'] = yvar[iymax]
-                    zvar = cdf.variables['z'].data.copy()
-                    self.griddata = numpy.flipud(zvar[iymin:iymax,ixmin:ixmax])
+                    zvar = cdf.variables['z'][iymin:iymax,ixmin:ixmax]
+                    zvar = zvar.copy()
+                    self.griddata = numpy.flipud(zvar)
                     m,n = self.griddata.shape
                     self.geodict['nrows'] = m
                     self.geodict['ncols'] = n
