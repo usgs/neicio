@@ -174,14 +174,16 @@ class ShakeGrid(Grid):
         self.geodict['ydim'] = smdict['grid_specification']['nominal_lat_spacing']
         self.geodict['nrows'] = smdict['grid_specification']['nlat']
         self.geodict['ncols'] = smdict['grid_specification']['nlon']
-        self.geodict['xmin'] = smdict['grid_specification']['lon_min']
+        #shakemap grids are gridline-registered (in GMT parlance), which means that
+        #the upper left corner grid values are not at pixel centers, but at pixel corners.
+        #since all other data sets are assumed to be pixel registered, let's modify the input coordinates
+        #to be down and to the right by 1/2 ydim and 1/2 xdim, respectively.
+        
+        self.geodict['xmin'] = smdict['grid_specification']['lon_min'] + self.geodict['xdim']/2.0
+        self.geodict['ymax'] = smdict['grid_specification']['lat_max'] - self.geodict['ydim']/2.0
+        
         self.geodict['xmax'] = self.geodict['xmin'] + ((self.geodict['ncols']-1)*self.geodict['xdim'])
-        self.geodict['ymax'] = smdict['grid_specification']['lat_max']
         self.geodict['ymin'] = self.geodict['ymax'] - ((self.geodict['nrows']-1)*self.geodict['ydim'])
-        #self.geodict['xmax'] = smdict['grid_specification']['lon_max']
-        #self.geodict['ymin'] = smdict['grid_specification']['lat_min']
-        
-        
                 
         #we want all grid geodicts to have a time associated with them
         #grab the time from the event tag 
