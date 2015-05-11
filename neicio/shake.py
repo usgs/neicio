@@ -179,8 +179,8 @@ class ShakeGrid(Grid):
         #since all other data sets are assumed to be pixel registered, let's modify the input coordinates
         #to be down and to the right by 1/2 ydim and 1/2 xdim, respectively.
         
-        self.geodict['xmin'] = smdict['grid_specification']['lon_min'] + self.geodict['xdim']/2.0
-        self.geodict['ymax'] = smdict['grid_specification']['lat_max'] - self.geodict['ydim']/2.0
+        self.geodict['xmin'] = smdict['grid_specification']['lon_min']
+        self.geodict['ymax'] = smdict['grid_specification']['lat_max']
         
         self.geodict['xmax'] = self.geodict['xmin'] + ((self.geodict['ncols']-1)*self.geodict['xdim'])
         self.geodict['ymin'] = self.geodict['ymax'] - ((self.geodict['nrows']-1)*self.geodict['ydim'])
