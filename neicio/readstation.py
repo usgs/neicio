@@ -31,7 +31,7 @@ def readStation(stationfile):
     compdict = {'lat':[],'lon':[],
                 'pga':[],'pgv':[],
                 'psa03':[],'psa10':[],
-                'psa30':[]}
+                'psa30':[], 'name':[]}
     for station in stations:
         lat = float(station.getAttribute('lat'))
         lon = float(station.getAttribute('lon'))
@@ -40,6 +40,7 @@ def readStation(stationfile):
         psa03 = float(station.getElementsByTagName('comp')[0].getElementsByTagName('psa03')[0].getAttribute('value'))
         psa10 = float(station.getElementsByTagName('comp')[0].getElementsByTagName('psa10')[0].getAttribute('value'))
         psa30 = float(station.getElementsByTagName('comp')[0].getElementsByTagName('psa30')[0].getAttribute('value'))
+        name = station.getElementsByTagName('comp')[0].getAttribute('name')
         compdict['lat'].append(lat)
         compdict['lon'].append(lon)
         compdict['pga'].append(pga)
@@ -47,6 +48,7 @@ def readStation(stationfile):
         compdict['psa03'].append(psa03)
         compdict['psa10'].append(psa10)
         compdict['psa30'].append(psa30)
+        compdict['name'].append(name)
     root.unlink()
     return compdict
 
@@ -57,3 +59,4 @@ if __name__ == '__main__':
     assert(len(compdict['lat']) == len(compdict['psa03']))
     assert(len(compdict['lat']) == len(compdict['psa10']))
     assert(len(compdict['lat']) == len(compdict['psa30']))
+    assert(len(compdict['lat']) == len(compdict['name']))
