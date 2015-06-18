@@ -106,8 +106,8 @@ class GMTGrid(Grid):
                 xvarname = 'lon'
                 yvarname = 'lat'
             if xvarname is not None: #at least two forms of COARDS-compliant netcdf files...
-                xvar = cdf.variables[xvarname].data
-                yvar = cdf.variables[yvarname].data
+                xvar = cdf.variables[xvarname].data.copy()
+                yvar = cdf.variables[yvarname].data.copy()
 
                 #do some QA on the x and y data
                 dx = numpy.diff(xvar)
@@ -150,10 +150,10 @@ class GMTGrid(Grid):
                         ixmax = numpy.abs(xvar-xmax).argmin()
                         iymin = numpy.abs(yvar-ymin).argmin()
                         iymax = numpy.abs(yvar-ymax).argmin()
-                    self.geodict['xmin'] = xvar[ixmin]
-                    self.geodict['xmax'] = xvar[ixmax]
-                    self.geodict['ymin'] = yvar[iymin]
-                    self.geodict['ymax'] = yvar[iymax]
+                    self.geodict['xmin'] = xvar[ixmin].copy()
+                    self.geodict['xmax'] = xvar[ixmax].copy()
+                    self.geodict['ymin'] = yvar[iymin].copy()
+                    self.geodict['ymax'] = yvar[iymax].copy()
                     zvar = cdf.variables['z'][iymin:iymax,ixmin:ixmax]
                     zvar = zvar.copy()
                     self.griddata = numpy.flipud(zvar)
@@ -163,12 +163,12 @@ class GMTGrid(Grid):
                 else:
                     self.geodict['nrows'] = cdf.dimensions[yvarname]
                     self.geodict['ncols'] = cdf.dimensions[xvarname]
-                    self.geodict['xmin'] = cdf.variables[xvarname].data.min()
-                    self.geodict['xmax'] = cdf.variables[xvarname].data.max()
-                    self.geodict['ymin'] = cdf.variables[yvarname].data.min()
-                    self.geodict['ymax'] = cdf.variables[yvarname].data.max()
+                    self.geodict['xmin'] = xvar.min().copy()
+                    self.geodict['xmax'] = xvar.max().copy()
+                    self.geodict['ymin'] = yvar.min().copy()
+                    self.geodict['ymax'] = yvar.max().copy()
                     zdata = cdf.variables['z'].data.copy()
-                    self.griddata = numpy.flipud(numpy.copy(zdata))
+                    self.griddata = numpy.flipud(zdata)
             else: #the other kind of COARDS netcdf
                 dxmin = cdf.variables['x_range'].data[0]
                 dxmax = cdf.variables['x_range'].data[1]
