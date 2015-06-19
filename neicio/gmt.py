@@ -81,6 +81,14 @@ class GMTGrid(Grid):
         self.griddata = numpy.array(data).reshape(self.geodict['nrows'],-1)
         self.griddata = (self.griddata * zscale) + zoffset
         f.close()     
+        self.Attributes = {}
+
+    def getAttributes(self):
+        """
+        Return the internal dictionary of attributes.  At the time of this writing, 
+        this can be whatever dictionary the user wants.
+        """
+        return self.Attributes
 
     def getFileType(self,grdfile):
         #TODO:check the file size against the supposed format - won't be able to 

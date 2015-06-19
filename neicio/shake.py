@@ -22,9 +22,6 @@ class ShakeGrid(Grid):
     smgrid.load('grid.xml')
     griddata = smgrid.getData()
     """
-    
-    AttributesDict = {}
-    
     def __init__(self,shakefilename,variable=None):
         """Load shakemap or secondary hazards grid data from file.
         @param shakefilename: Path to valid ShakeMap/Secondary Hazards XML file OR file-like object.

@@ -330,6 +330,14 @@ class Grid:
         row = np.floor((uly-lat)/ydim)
         return (row,col)
 
+
+    def getAttributes(self):
+        """Return a dictionary of attributes for this object.  For now, the 
+        contents of this are not constrained by any particular requirements.
+        Does nothing (implemented by subclasses)
+        """
+        pass
+    
     def getValue(self,lat,lon): #return nearest neighbor value
         """Return numpy array at given latitude and longitude (using nearest neighbor).
         @param lat: Latitude (in decimal degrees) of desired data value.
