@@ -110,7 +110,7 @@ class GMTGrid(Grid):
             if 'x' in cdf.variables.keys():
                 xvarname = 'x'
                 yvarname = 'y'
-            else:
+            elif 'lon' in cdf.variables.keys():
                 xvarname = 'lon'
                 yvarname = 'lat'
             if xvarname is not None: #at least two forms of COARDS-compliant netcdf files...
