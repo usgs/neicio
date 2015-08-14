@@ -193,7 +193,7 @@ class GMTGrid(Grid):
                     self.geodict['ymax'] = dymax
                     self.geodict['nrows'] = nrows
                     self.geodict['ncols'] = ncols
-                    self.griddata = numpy.reshape(numpy.flipud(cdf.variables['z'].data.copy()),(nrows,ncols))
+                    self.griddata = numpy.reshape(cdf.variables['z'].data.copy(),(nrows,ncols))
                 else:
                     xmin,xmax,ymin,ymax = bounds
                     xvar = numpy.arange(xmin,xmax+xdim,xdim)
@@ -207,7 +207,7 @@ class GMTGrid(Grid):
                     self.geodict['ymin'] = yvar[iymin]
                     self.geodict['ymax'] = yvar[iymax]
                     #we're reading in the whole array here just to subset it - not very efficient use of memory
-                    self.griddata = numpy.reshape(numpy.flipud(cdf.variables['z'].data.copy()),nrows,ncols)
+                    self.griddata = numpy.reshape(cdf.variables['z'].data.copy(),nrows,ncols)
                     self.griddata = self.griddata[iymin:iymax,ixmin:ixmax]
                     m,n = self.griddata.shape
                     self.geodict['nrows'] = m
