@@ -364,6 +364,46 @@ class Grid:
             return self.griddata[row,col,:]
         else:
             return self.griddata[row,col]
+    
+    def getValueSafe(self,lat,lon,default=None): #return nearest neighbor value
+        """Return numpy array at given latitude and longitude (using nearest neighbor).
+        If the lat/lon fall outside the grid, assign the default value
+        @param lat: Latitude (in decimal degrees) of desired data value.
+        @param lon: Longitude (in decimal degrees) of desired data value.
+        @return: Value at input latitude,longitude position.
+        """
+        ulx = self.geodict['xmin']
+        uly = self.geodict['ymax']
+        xdim = self.geodict['xdim']
+        ydim = self.geodict['ydim']
+        dims = self.griddata.shape
+        nrows = dims[0]
+        ncols = dims[1]
+        #check to see if we're in a scenario where the grid crosses the meridian
+        if self.geodict['xmax'] < ulx and lon < ulx:
+            lon += 360
+
+        col = np.round(((lon - ulx)/xdim)).astype(int)
+        row = np.round(((uly - lat)/ydim)).astype(int)
+        if (row < 0).any() or (row > nrows-1).any() or (col < 0).any() or (col > ncols-1).any():
+            safe_row = np.array(row)
+            safe_col = np.array(col)
+            bad_rows = (safe_row < 0) | (safe_row > nrows-1)
+            bad_cols = (safe_col < 0) | (safe_col > ncols-1)
+            safe_row[bad_rows] = 0
+            safe_col[bad_cols] = 0
+            if len(dims) == 3:
+                safe_data = self.griddata[safe_row,safe_col,:]
+                safe_data[bad_rows | bad_cols,:] = default
+            else:
+                safe_data = self.griddata[safe_row,safe_col]
+                safe_data[bad_rows | bad_cols] = default
+            return safe_data
+        else:
+            if len(dims) == 3:
+                return self.griddata[row,col,:]
+            else:
+                return self.griddata[row,col]
 
 def testBin():
     grid = Grid()
