@@ -1,15 +1,18 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+
 from xml.dom import minidom
 import copy
 import datetime
+import sys
 
 TIMEFMT = '%Y-%m-%d %H:%M:%S'
 
 class Tag(object):
     def __init__(self,name,attributes={},data=None,root=None,schema=None):
         if not isinstance(attributes,dict):
-            raise Exception,'Attributes for Tag %s are of type %s, not dict!' % (name,type(attributes))
+            raise Exception('Attributes for Tag %s are of type %s, not dict!' % (name,type(attributes)))
         self.data = data
         self.attributes = attributes
         self.name = name
@@ -34,7 +37,7 @@ class Tag(object):
         hasData = root.firstChild.nodeType == root.TEXT_NODE and len(root.firstChild.nodeValue.strip())
         if len(atts) and hasData:
             pass
-            #raise Exception,'You can have child elements or tag data, but not both!'
+            #raise Exception('You can have child elements or tag data, but not both!')
         if len(atts):
             for item in atts.items():
                 key = item[0]
@@ -59,7 +62,7 @@ class Tag(object):
 
         if len(atts) and hasData:
             pass
-            #raise Exception,'You can have child elements or tag data, but not both!'
+            #raise Exception('You can have child elements or tag data, but not both!')
         attributes = {}
         if len(atts):
             for item in atts.items():
@@ -67,10 +70,10 @@ class Tag(object):
                 value = item[1]
                 try:
                     value = float(value)
-                except ValueError,msg:
+                except ValueError(msg):
                     try:
                         value = int(value)
-                    except ValueError,msg:
+                    except ValueError(msg):
                         pass
                 #this may be a time field - let's assume it is and try to parse it
                 if (isinstance(value,str) or isinstance(value,unicode)) and (key.lower().count('time') or key.lower().count('date')): 
@@ -107,14 +110,14 @@ class Tag(object):
 
     def addChild(self,tag):
         if not isinstance(tag,Tag):
-            raise Exception,'addChild only takes Tag objects as arguments'
+            raise Exception('addChild only takes Tag objects as arguments')
         if self.data is not None:
-            raise Exception,'You can have child elements or tag data, but not both!'
+            raise Exception('You can have child elements or tag data, but not both!')
         self.children.append(tag)
 
     def deleteChildren(self,tagname):
         if not isinstance(tagname,str):
-            raise Exception,'deleteChildren only takes string objects as arguments'
+            raise Exception('deleteChildren only takes string objects as arguments')
         numchildren = 0
         goodchildren = []
         for child in self.children:
@@ -130,15 +133,18 @@ class Tag(object):
         hasAttributes = bool(len(self.attributes))
         hasData = self.data is not None
         hasChildren = bool(len(self.children))
-
+        if sys.version_info.major == 2:
+            allowed_types = (str,unicode)
+        else:
+            allowed_types = (str)
         linestr = '\t'*ntabs+'<%s ' % self.name
         if hasAttributes:
             attstr = ''
-            for key,value in self.attributes.iteritems():
+            for key,value in self.attributes.items():
                 if isinstance(value,datetime.datetime):
                     value = value.strftime(TIMEFMT)
                 #strip out " (double quotes) from attributes - they'll mess up XML parsing later
-                if isinstance(value,str) or isinstance(value,unicode):
+                if isinstance(value,allowed_types):
                     value = value.replace('"',"'")
                 attstr = attstr + '%s="%s" ' % (key,str(value))
             linestr = linestr + attstr.strip()
@@ -177,7 +183,7 @@ if __name__ == '__main__':
     child2 = Tag('child2',attributes={'name':'bam-bam','age':11},data=c2data)
     root.addChild(child1)
     root.addChild(child2)
-    print root.renderToXML()
+    print(root.renderToXML())
     
 
 

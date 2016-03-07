@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+
 import subprocess
 
 def getCommandOutput(cmd):
@@ -24,6 +26,6 @@ def getCommandOutput(cmd):
 
 if __name__ == '__main__':
     retcode,stdout,stderr = getCommandOutput('ls blah')
-    print 'Return: %s' % retcode
-    print 'stdout: %s' % stdout
-    print 'stderr: %s' % stderr
+    print('Return: %s' % retcode)
+    print('stdout: %s' % stdout)
+    print('stderr: %s' % stderr)
